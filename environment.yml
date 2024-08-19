@@ -1,0 +1,15 @@
+name: mshdtf-env
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base
+  - scanpy
+  - scipy
+  - python-igraph
+  - leidenalg
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - bioconductor-biomart
