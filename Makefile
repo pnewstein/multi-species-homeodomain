@@ -16,3 +16,4 @@ data/bpc.h5ad: src/make_bipolar_h5ad.py seq-data/clust_retinal_bipolar.txt seq-d
 
 seq-data/clust_retinal_bipolar.txt seq-data/exp_matrix.txt:
 	cat seq-data/README.md >&2
+	exit 1
