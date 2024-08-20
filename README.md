@@ -16,3 +16,12 @@ git clone <>
 ```bash
 micromamba env create -f environment.yml
 ```
+
+### Troubleshooting
+- May fail to install on osx-arm64 
+    - see [issue](https://github.com/conda-forge/r-xml-feedstock/issues/47)
+    - instead use following commands:
+    ```bash
+micromamba env create -f backup-environment.yml
+micromamba run -n mshdtf-env R --no-save < backup-biomart-installer.R
+    ```
