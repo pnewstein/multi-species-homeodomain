@@ -21,11 +21,15 @@ except NameError:
     HERE = Path()
 
 
-IMG_DIR = HERE / "../img"
-IMG_DIR.mkdir(exist_ok=True)
+IMG_DIR = HERE / "../imgs"
 
-def get_expressed_htdf(adata, transcript_thresh: float, hox_genes: pd.DataFrame, varname: str) -> list[str]:
-    hdtf_dict = dict(zip(hox_genes["external_gene_name"].values, hox_genes["is_hdtf"].values))
+
+def get_expressed_htdf(
+    adata, transcript_thresh: float, hox_genes: pd.DataFrame, varname: str
+) -> list[str]:
+    hdtf_dict = dict(
+        zip(hox_genes["external_gene_name"].values, hox_genes["is_hdtf"].values)
+    )
     out: set[str] = set()
     missing_genes: list[str] = []
     for cluster_name, sub_df in adata.obs.groupby(varname):
@@ -41,7 +45,37 @@ def get_expressed_htdf(adata, transcript_thresh: float, hox_genes: pd.DataFrame,
         expressed_genes = expressed_genes[~expressed_genes.str.startswith("mt-")]
         # drop others
         expressed_genes = expressed_genes.drop(
-            ['E130218I03Rik', 'Fam19a3', 'Gucy1b3', "Malat1", "Meg3", 'Mir124-2hg', 'Pnmal2', 'Xist', 'Atpif1', 'BC030499', 'Hist3h2a', 'Skp1a', '2010107E04Rik', 'Atp5b', 'Sept7', 'Atp5f1', 'Atp5g3', 'Gucy1a3', 'A730046J19Rik', 'Gm4792', 'Gas5', 'Gnb2l1', 'Lect1', "H2afy", "Atp5c1", 'Atp5j', 'Gm37583', 'Hist3h2ba'], errors="ignore"
+            [
+                "E130218I03Rik",
+                "Fam19a3",
+                "Gucy1b3",
+                "Malat1",
+                "Meg3",
+                "Mir124-2hg",
+                "Pnmal2",
+                "Xist",
+                "Atpif1",
+                "BC030499",
+                "Hist3h2a",
+                "Skp1a",
+                "2010107E04Rik",
+                "Atp5b",
+                "Sept7",
+                "Atp5f1",
+                "Atp5g3",
+                "Gucy1a3",
+                "A730046J19Rik",
+                "Gm4792",
+                "Gas5",
+                "Gnb2l1",
+                "Lect1",
+                "H2afy",
+                "Atp5c1",
+                "Atp5j",
+                "Gm37583",
+                "Hist3h2ba",
+            ],
+            errors="ignore",
         )
         found_bools = np.isin(expressed_genes, hox_genes["external_gene_name"])
         missing_genes.extend(list(expressed_genes[~found_bools]))
@@ -51,13 +85,22 @@ def get_expressed_htdf(adata, transcript_thresh: float, hox_genes: pd.DataFrame,
     Path("missing_genes.txt").write_text("\n".join(set(missing_genes)))
     return list(out)
 
-def plot_dotplot(adata: sc.AnnData, obs_name: str, genes: list[str], thresh: float, cmap: str, order: Sequence[str] | None =None):
+
+def plot_dotplot(
+    adata: sc.AnnData,
+    obs_name: str,
+    genes: list[str],
+    thresh: float,
+    cmap: str,
+    order: Sequence[str] | None = None,
+):
     cluster_names = np.unique(adata.obs[obs_name])
     expression_df = adata[:, np.array(genes)].to_df()
     expression_df[obs_name] = adata.obs[obs_name]
     clusterwise_expression = pd.DataFrame(np.nan, index=cluster_names, columns=genes)
     for cluster, sub_df in expression_df.groupby(obs_name, observed=True):
-        if cluster == "other": continue
+        if cluster == "other":
+            continue
         clusterwise_expression.loc[cluster, :] = sub_df.loc[:, genes].mean()
     if order is None:
         hdtfs_in_order = (clusterwise_expression > thresh).sum().sort_values().index
@@ -66,32 +109,40 @@ def plot_dotplot(adata: sc.AnnData, obs_name: str, genes: list[str], thresh: flo
     clusters_in_order = np.sort(clusterwise_expression.index).tolist()
     ax: Axes
     fig: Figure
-    fig, ax = plt.subplots(constrained_layout=True) # type: ignore
+    fig, ax = plt.subplots(constrained_layout=True)  # type: ignore
     edge_color = ax.spines["left"].get_edgecolor()
-    dp = sc.pl.DotPlot(adata, var_names=hdtfs_in_order, groupby=obs_name, categories_order=clusters_in_order, ax=ax)
+    dp = sc.pl.DotPlot(
+        adata,
+        var_names=hdtfs_in_order,
+        groupby=obs_name,
+        categories_order=clusters_in_order,
+        ax=ax,
+    )
     dp.style(cmap=cmap, dot_edge_color=edge_color)
     dp.swap_axes()
     axs = dp.show(return_axes=True)
     sns.despine(fig)
     return fig, axs
 
+
 def bipolar_dots():
     adata = sc.read_h5ad(HERE / "../data/bpc.h5ad")
     # adata.obs["category"] = adata.obs["category"].astype(pd.Categorical(np.unique(adata.obs["category"])).dtype)
     hox_genes = pd.read_csv(HERE / "../data/mouse_hdtf.csv", index_col=0)
-    thresh = .355
+    thresh = 0.355
     high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "cluster")
-    plt.style.use("default")
-    fig, ax = plot_dotplot(adata, "cluster", high_expression_hdtf, thresh, order=None, cmap="plasma_r")
-    fig.set_size_inches([8.02, 4.48])
+    plt.style.use(HERE / "paper.mplstyle")
+    fig, ax = plot_dotplot(
+        adata, "cluster", high_expression_hdtf, thresh, order=None, cmap="plasma_r"
+    )
+    fig.set_size_inches((6.92, 4.73))
     fig.savefig(IMG_DIR / "bpc_dots.svg")
     fig: Figure
-    fig, ax = plt.subplots(constrained_layout=True) # type: ignore
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata)
+    fig, ax = plt.subplots(constrained_layout=True)  # type: ignore
     sc.pl.umap(adata, color="cluster", ax=ax, legend_loc="on data")
-    fig.set_size_inches([4.32, 3.75])
+    fig.set_size_inches((4.32, 3.75))
     fig.savefig(IMG_DIR / "bpc_umap.svg")
+
 
 def main():
     if sys.argv[1] == "bpc":
@@ -100,3 +151,7 @@ def main():
         lamina_dots()
     else:
         raise ValueError("unknown command")
+
+
+if __name__ == "__main__":
+    main()

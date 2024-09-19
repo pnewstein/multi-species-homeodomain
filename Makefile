@@ -5,6 +5,7 @@ CONDA_CMD = micromamba run -n mshdtf-env
 all: $(BPC_IMGS)
 
 $(BPC_IMGS): src/make_dotplots.py data/bpc.h5ad data/mouse_hdtf.csv
+	mkdir -p imgs
 	$(CONDA_CMD) python src/make_dotplots.py bpc
 
 data/mouse_hdtf.csv data/drosophila_hdtf.csv: src/get_hdtf.R
@@ -12,6 +13,7 @@ data/mouse_hdtf.csv data/drosophila_hdtf.csv: src/get_hdtf.R
 	$(CONDA_CMD) R --no-save < src/get_hdtf.R
 
 data/bpc.h5ad: src/make_bipolar_h5ad.py seq-data/clust_retinal_bipolar.txt seq-data/exp_matrix.txt
+	mkdir -p data
 	$(CONDA_CMD) python src/make_bipolar_h5ad.py
 
 seq-data/clust_retinal_bipolar.txt seq-data/exp_matrix.txt:
