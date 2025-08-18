@@ -135,12 +135,12 @@ def bipolar_dots():
     fig, ax = plot_dotplot(
         adata, "cluster", high_expression_hdtf, thresh, order=None, cmap="plasma_r"
     )
-    fig.set_size_inches((6.92, 4.73))
+    fig.set_size_inches((8.21, 5.76))
     fig.savefig(IMG_DIR / "bpc_dots.svg")
     fig: Figure
     fig, ax = plt.subplots(constrained_layout=True)  # type: ignore
     sc.pl.umap(adata, color="cluster", ax=ax, legend_loc="on data")
-    fig.set_size_inches((4.32, 3.75))
+    fig.set_size_inches((2.2, 1.7))
     fig.savefig(IMG_DIR / "bpc_umap.svg")
 
 
@@ -149,9 +149,31 @@ def main():
         bipolar_dots()
     elif sys.argv[1] == "lamina":
         lamina_dots()
+    elif sys.argv[1] == "retina":
+        retina_dots()
     else:
         raise ValueError("unknown command")
 
+
+def lamina_dots():
+    adata = sc.read_h5ad(HERE / "../data/chundi_lamina.h5ad")
+    adata.obs["category"] = adata.obs["category"].astype(pd.Categorical(np.unique(adata.obs["category"])).dtype)
+    # first plot a umap
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata, spread=3)
+    plt.style.use(HERE / "paper.mplstyle")
+    sc.pl.umap(adata, color="category")
+    fig = plt.gcf()
+    fig.set_size_inches((8.45, 7.84))
+    fig.savefig("lamina_umap.svg")
+    hox_genes = pd.read_csv(HERE / "../data/drosophila_hdtf.csv", index_col=0)
+    thresh = .5
+    high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "category")
+    order = "ap", "pdm3", "bsh", "zfh1", "zfh2", "onecut", "scro"
+    assert set(order) == set(high_expression_hdtf)
+    fig, ax = plot_dotplot(adata, "category", high_expression_hdtf, thresh, order=order, cmap="plasma_r")
+    fig.set_size_inches((5, 3.5))
+    fig.savefig(HERE / "../imgs/lamina_dots.svg")
 
 if __name__ == "__main__":
     main()
