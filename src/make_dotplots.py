@@ -5,6 +5,7 @@ makes dotplots for bipolar cells and lamina cells reading h5ad files
 from pathlib import Path
 import sys
 from typing import Sequence
+from itertools import chain
 
 import scanpy as sc
 import pandas as pd
@@ -13,6 +14,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import seaborn as sns
+import umap
 
 
 try:
@@ -20,80 +22,24 @@ try:
 except NameError:
     HERE = Path()
 
+sys.path.append(str(HERE))
+from query_domains import get_expressed_hdtf
+
 
 IMG_DIR = HERE / "../imgs"
-
-
-def get_expressed_htdf(
-    adata, transcript_thresh: float, hox_genes: pd.DataFrame, varname: str
-) -> list[str]:
-    hdtf_dict = dict(
-        zip(hox_genes["external_gene_name"].values, hox_genes["is_hdtf"].values)
-    )
-    out: set[str] = set()
-    missing_genes: list[str] = []
-    for cluster_name, sub_df in adata.obs.groupby(varname):
-        sub_adata = adata[sub_df.index, :]
-        mean_expression_array_like = sub_adata[sub_df.index, :].X.mean(axis=0)
-        if isinstance(mean_expression_array_like, np.matrix):
-            mean_expression_array = np.array(mean_expression_array_like).flatten()
-        else:
-            mean_expression_array = mean_expression_array_like
-        is_expressed = mean_expression_array > transcript_thresh
-        expressed_genes = adata.var_names[is_expressed]
-        # drop mitochondrial
-        expressed_genes = expressed_genes[~expressed_genes.str.startswith("mt-")]
-        # drop others
-        expressed_genes = expressed_genes.drop(
-            [
-                "E130218I03Rik",
-                "Fam19a3",
-                "Gucy1b3",
-                "Malat1",
-                "Meg3",
-                "Mir124-2hg",
-                "Pnmal2",
-                "Xist",
-                "Atpif1",
-                "BC030499",
-                "Hist3h2a",
-                "Skp1a",
-                "2010107E04Rik",
-                "Atp5b",
-                "Sept7",
-                "Atp5f1",
-                "Atp5g3",
-                "Gucy1a3",
-                "A730046J19Rik",
-                "Gm4792",
-                "Gas5",
-                "Gnb2l1",
-                "Lect1",
-                "H2afy",
-                "Atp5c1",
-                "Atp5j",
-                "Gm37583",
-                "Hist3h2ba",
-            ],
-            errors="ignore",
-        )
-        found_bools = np.isin(expressed_genes, hox_genes["external_gene_name"])
-        missing_genes.extend(list(expressed_genes[~found_bools]))
-        expressed_genes = expressed_genes[found_bools]
-        expressed_hdtfs = expressed_genes[[hdtf_dict[g] for g in expressed_genes]]
-        out = out.union(np.array(expressed_hdtfs))
-    Path("missing_genes.txt").write_text("\n".join(set(missing_genes)))
-    return list(out)
 
 
 def plot_dotplot(
     adata: sc.AnnData,
     obs_name: str,
-    genes: list[str],
     thresh: float,
     cmap: str,
     order: Sequence[str] | None = None,
-):
+    use_umap=False,
+    fly=False,
+) -> Figure:
+    cluster_hdtf_expression = get_expressed_hdtf(adata, thresh, obs_name, fly)
+    genes = list(set(chain.from_iterable(cluster_hdtf_expression.values())))
     cluster_names = np.unique(adata.obs[obs_name])
     expression_df = adata[:, np.array(genes)].to_df()
     expression_df[obs_name] = adata.obs[obs_name]
@@ -103,10 +49,24 @@ def plot_dotplot(
             continue
         clusterwise_expression.loc[cluster, :] = sub_df.loc[:, genes].mean()
     if order is None:
-        hdtfs_in_order = (clusterwise_expression > thresh).sum().sort_values().index
+        number_above_thresh = (clusterwise_expression > thresh).sum()
+        sum_expression = clusterwise_expression.sum(axis=0)
+        hdtfs_in_order = (
+            pd.DataFrame([number_above_thresh, sum_expression])
+            .T.sort_values([0, 1])
+            .index
+        )
     else:
         hdtfs_in_order = list(order)
+        assert set(genes) == set(hdtfs_in_order), "Wrong genes are plotted"
     clusters_in_order = np.sort(clusterwise_expression.index).tolist()
+    if use_umap:
+        reduced = (
+            umap.UMAP(n_components=1, random_state=100)
+            .fit_transform(clusterwise_expression)
+            .flatten()
+        )
+        clusters_in_order = pd.Series(reduced, index=cluster_names).sort_values().index
     ax: Axes
     fig: Figure
     fig, ax = plt.subplots(constrained_layout=True)  # type: ignore
@@ -122,26 +82,70 @@ def plot_dotplot(
     dp.swap_axes()
     axs = dp.show(return_axes=True)
     sns.despine(fig)
-    return fig, axs
+    return fig
 
 
 def bipolar_dots():
     adata = sc.read_h5ad(HERE / "../data/bpc.h5ad")
-    # adata.obs["category"] = adata.obs["category"].astype(pd.Categorical(np.unique(adata.obs["category"])).dtype)
-    hox_genes = pd.read_csv(HERE / "../data/mouse_hdtf.csv", index_col=0)
     thresh = 0.355
-    high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "cluster")
     plt.style.use(HERE / "paper.mplstyle")
-    fig, ax = plot_dotplot(
-        adata, "cluster", high_expression_hdtf, thresh, order=None, cmap="plasma_r"
-    )
+    fig = plot_dotplot(adata, "cluster", thresh, order=None, cmap="plasma_r")
     fig.set_size_inches((8.21, 5.76))
     fig.savefig(IMG_DIR / "bpc_dots.svg")
-    fig: Figure
-    fig, ax = plt.subplots(constrained_layout=True)  # type: ignore
-    sc.pl.umap(adata, color="cluster", ax=ax, legend_loc="on data")
-    fig.set_size_inches((2.2, 1.7))
-    fig.savefig(IMG_DIR / "bpc_umap.svg")
+
+
+def retina_dots():
+    adata = sc.read_h5ad(HERE / "../data/MRCA_full_normcounts.h5ad")
+    adata.obs["majorclass"] = adata.obs["majorclass"].astype(str)
+    adata.obs.loc[adata.obs["majorclass"].isin(["Rod", "Cone"]), "majorclass"] = "PR"
+    adata.obs["majorclass"] = adata.obs["majorclass"].astype("category")
+    size_dict = {
+        "AC": (16.61, 7.49),
+        "RGC": (12.5, 7.77),
+        "BC": (12.85, 7.65),
+        "PR": (2.02, 3.83),
+        "HC": (1.86, 3.2),
+    }
+    figures: list[Figure] = []
+    for cell_class, size in size_dict.items():
+        adata_in_class = adata[adata.obs["majorclass"] == cell_class]
+        use_umap = False if cell_class == "PR" else True
+        with plt.style.context("paper.mplstyle"):
+            fig = plot_dotplot(
+                adata_in_class,
+                "celltype",
+                thresh=0.35,
+                cmap="plasma_r",
+                use_umap=use_umap,
+            )
+        fig.set_size_inches(size)
+        fig.savefig(HERE / f"imgs/{cell_class}.svg")
+        figures.append(fig)
+
+
+def lamina_dots():
+    adata = sc.read_h5ad(HERE / "../data/chundi_lamina.h5ad")
+    adata.obs["category"] = adata.obs["category"].astype(
+        pd.Categorical(np.unique(adata.obs["category"])).dtype
+    )
+    # first plot a umap
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata, spread=3)
+    plt.style.use(HERE / "paper.mplstyle")
+    sc.pl.umap(adata, color="category")
+    fig = plt.gcf()
+    fig.set_size_inches((8.45, 7.84))
+    fig.savefig("lamina_umap.svg")
+    hox_genes = pd.read_csv(HERE / "../data/drosophila_hdtf.csv", index_col=0)
+    thresh = 0.5
+    high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "category")
+    order = "ap", "pdm3", "bsh", "zfh1", "zfh2", "onecut", "scro"
+    assert set(order) == set(high_expression_hdtf)
+    fig = plot_dotplot(
+        adata, "category", thresh, order=order, cmap="plasma_r"
+    )
+    fig.set_size_inches((5, 3.5))
+    fig.savefig(HERE / "../imgs/lamina_dots.svg")
 
 
 def main():
@@ -154,26 +158,6 @@ def main():
     else:
         raise ValueError("unknown command")
 
-
-def lamina_dots():
-    adata = sc.read_h5ad(HERE / "../data/chundi_lamina.h5ad")
-    adata.obs["category"] = adata.obs["category"].astype(pd.Categorical(np.unique(adata.obs["category"])).dtype)
-    # first plot a umap
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata, spread=3)
-    plt.style.use(HERE / "paper.mplstyle")
-    sc.pl.umap(adata, color="category")
-    fig = plt.gcf()
-    fig.set_size_inches((8.45, 7.84))
-    fig.savefig("lamina_umap.svg")
-    hox_genes = pd.read_csv(HERE / "../data/drosophila_hdtf.csv", index_col=0)
-    thresh = .5
-    high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "category")
-    order = "ap", "pdm3", "bsh", "zfh1", "zfh2", "onecut", "scro"
-    assert set(order) == set(high_expression_hdtf)
-    fig, ax = plot_dotplot(adata, "category", high_expression_hdtf, thresh, order=order, cmap="plasma_r")
-    fig.set_size_inches((5, 3.5))
-    fig.savefig(HERE / "../imgs/lamina_dots.svg")
 
 if __name__ == "__main__":
     main()

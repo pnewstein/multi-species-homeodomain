@@ -1,3 +1,7 @@
+"""
+This file runs a permutation test on the data in cartridge_count
+"""
+
 from pathlib import Path
 
 import pandas as pd
@@ -18,6 +22,9 @@ def get_difference(df: pd.DataFrame) -> float:
 
 
 def main():
+    """
+    runs the permutation test 10,000 trials and prints the result
+    """
     rng = np.random.default_rng(100)
     df = pd.read_csv(HERE / "../data/cartridge_count.csv")
     real = get_difference(df)
@@ -26,3 +33,7 @@ def main():
         df["condition"] = rng.permutation(np.array(df["condition"]))
         out_list[i] = get_difference(df)
     print(np.mean(out_list < real))
+
+
+if __name__ == "__main__":
+    main()

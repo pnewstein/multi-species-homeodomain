@@ -1,15 +1,24 @@
 name: mshdtf-env
 channels:
   - conda-forge
-  - bioconda
 dependencies:
-  - r-base
   - scanpy
-  - scipy
-  - python-igraph
-  - leidenalg
-  - pandas
-  - numpy
+  - anndata>=0.7.4
+  - pandas>1.0.0
+  - numpy>=1.19.0
   - matplotlib
   - seaborn
-  - bioconductor-biomart
+  - umap-learn>=0.4.6
+  - requests
+  - scipy>=1.3.1
+  - scikit-learn>=0.23.1
+  - numba>=0.50.1
+  - packaging>=0.20.0
+  - dill
+  - ipython
+  - h5py
+  - hnswlib
+  - pip:
+    - sam-algorithm
+   
+
