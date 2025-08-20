@@ -10,6 +10,7 @@ import anndata as ad
 import pandas as pd
 from samalg import SAM
 import numpy as np
+from scipy.sparse import csr_matrix
 
 try:
     HERE = Path(__file__).parent
@@ -27,7 +28,7 @@ def main():
         data_path / "Count/R2/outs/raw_feature_bc_matrix",
         cache=False,
     )
-    adata_r1.var["gene_ids"].to_csv("gene_ids.csv")
+    adata_r1.var["gene_ids"].to_csv(HERE / "../data/gene_ids.csv")
     adata = ad.concat(
         {"r1": adata_r1, "r2": adata_r2}, join="outer", label="dataset_name"
     )
@@ -79,6 +80,7 @@ def main():
     )
     l_adata.obs["category"] = np.array(inverted[l_adata.obs["leiden_clusters"]])
     sam = SAM(counts=l_adata)
+    sam.run()
     sam.adata.write_h5ad(HERE / "../data/adult_female_lamina_neurons.h5ad")
 
 

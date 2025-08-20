@@ -195,7 +195,8 @@ def get_expressed_hdtf(
     # filter those genes which are not HDTFs
     cluster_hdtf_expression = {}
     for cluster, cluster_expressed in cluster_expression.items():
-        cluster_ids = id_series[cluster_expressed]
+        known_cluster_expression = list(set(cluster_expressed) - set(unknowns))
+        cluster_ids = id_series[known_cluster_expression]
         name_to_hdtf = cluster_ids.map(hdtf_df)
         cluster_hdtf_expression[cluster] = np.array(
             name_to_hdtf.loc[name_to_hdtf].index

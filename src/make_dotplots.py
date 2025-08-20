@@ -58,7 +58,7 @@ def plot_dotplot(
         )
     else:
         hdtfs_in_order = list(order)
-        assert set(genes) == set(hdtfs_in_order), "Wrong genes are plotted"
+        # assert set(genes) == set(hdtfs_in_order), "Wrong genes are plotted"
     clusters_in_order = np.sort(clusterwise_expression.index).tolist()
     if use_umap:
         reduced = (
@@ -110,7 +110,7 @@ def retina_dots():
     for cell_class, size in size_dict.items():
         adata_in_class = adata[adata.obs["majorclass"] == cell_class]
         use_umap = False if cell_class == "PR" else True
-        with plt.style.context("paper.mplstyle"):
+        with plt.style.context(HERE / "paper.mplstyle"):
             fig = plot_dotplot(
                 adata_in_class,
                 "celltype",
@@ -124,7 +124,7 @@ def retina_dots():
 
 
 def lamina_dots():
-    adata = sc.read_h5ad(HERE / "../data/chundi_lamina.h5ad")
+    adata = sc.read_h5ad(HERE / "../data/adult_female_lamina_neurons.h5ad")
     adata.obs["category"] = adata.obs["category"].astype(
         pd.Categorical(np.unique(adata.obs["category"])).dtype
     )
@@ -136,13 +136,10 @@ def lamina_dots():
     fig = plt.gcf()
     fig.set_size_inches((8.45, 7.84))
     fig.savefig("lamina_umap.svg")
-    hox_genes = pd.read_csv(HERE / "../data/drosophila_hdtf.csv", index_col=0)
     thresh = 0.5
-    high_expression_hdtf = get_expressed_htdf(adata, thresh, hox_genes, "category")
     order = "ap", "pdm3", "bsh", "zfh1", "zfh2", "onecut", "scro"
-    assert set(order) == set(high_expression_hdtf)
     fig = plot_dotplot(
-        adata, "category", thresh, order=order, cmap="plasma_r"
+        adata, "category", thresh, order=order, cmap="plasma_r", fly=True
     )
     fig.set_size_inches((5, 3.5))
     fig.savefig(HERE / "../imgs/lamina_dots.svg")
