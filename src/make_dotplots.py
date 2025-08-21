@@ -119,7 +119,7 @@ def retina_dots():
                 use_umap=use_umap,
             )
         fig.set_size_inches(size)
-        fig.savefig(HERE / f"imgs/{cell_class}.svg")
+        fig.savefig(IMG_DIR / f"{cell_class}.svg")
         figures.append(fig)
 
 
@@ -135,14 +135,14 @@ def lamina_dots():
     sc.pl.umap(adata, color="category")
     fig = plt.gcf()
     fig.set_size_inches((8.45, 7.84))
-    fig.savefig("lamina_umap.svg")
+    fig.savefig(IMG_DIR / "lamina_umap.svg")
     thresh = 0.5
     order = "ap", "pdm3", "bsh", "zfh1", "zfh2", "onecut", "scro"
     fig = plot_dotplot(
         adata, "category", thresh, order=order, cmap="plasma_r", fly=True
     )
     fig.set_size_inches((5, 3.5))
-    fig.savefig(HERE / "../imgs/lamina_dots.svg")
+    fig.savefig(IMG_DIR / "lamina_dots.svg")
 
 
 def main():

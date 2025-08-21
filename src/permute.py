@@ -17,8 +17,8 @@ def get_difference(df: pd.DataFrame) -> float:
     """
     gets the difference between the means of each condition
     """
-    sum = df.groupby("condition").sum()["count"]
-    return sum["ctr"] - sum["exp"]
+    cond_sum = df.groupby("condition").sum()["count"]
+    return cond_sum["ctr"] - cond_sum["exp"]
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
     for i, _ in enumerate(out_list):
         df["condition"] = rng.permutation(np.array(df["condition"]))
         out_list[i] = get_difference(df)
-    print(np.mean(out_list < real))
+    print(np.mean(np.array(out_list) < real))
 
 
 if __name__ == "__main__":

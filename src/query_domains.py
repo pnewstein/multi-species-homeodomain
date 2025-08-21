@@ -115,10 +115,10 @@ def get_ensamble_gene_info(symbols: list[str]) -> dict[str, str]:
     url = f"https://rest.ensembl.org/lookup/symbol/{species}"
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     time.sleep(RATE_LIMIT)
-    responce = requests.post(
+    response = requests.post(
         url, headers=headers, data=json.dumps({"symbols": symbols})
     )
-    return {name: table["id"] for name, table in responce.json().items()}
+    return {name: table["id"] for name, table in response.json().items()}
 
 
 def search_extern_name(symbols: list[str]) -> tuple[dict[str, str], list[str]]:

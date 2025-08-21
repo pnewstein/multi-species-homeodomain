@@ -65,18 +65,18 @@ def main():
         sam.adata, color=["leiden_clusters"], legend_loc="on data", add_outline=True
     )
     sc.pl.dotplot(sam.adata, var_names=DIFF_LAMINA_GENES, groupby="leiden_clusters")
-    cluster_identiy_map = {
+    cluster_identity_map = {
         "L1": (19,),  # svp+ zfh1+ VGlut+
         "L2": (1,),  # bab2
         "L3": (4,),  # zfh1+ erm+
         "L4": (11,),  # Bsh+ Ap+
         "L5": (6,),  # Bsh+ Pdm3+
     }
-    clusters_to_keep = list(itertools.chain.from_iterable(cluster_identiy_map.values()))
+    clusters_to_keep = list(itertools.chain.from_iterable(cluster_identity_map.values()))
     adata.obs["leiden_clusters"] = sam.adata.obs["leiden_clusters"]
     l_adata = adata[sam.adata.obs["leiden_clusters"].isin(clusters_to_keep)]
     inverted = pd.Series(
-        {v: k for k, vals in cluster_identiy_map.items() for v in vals}
+        {v: k for k, vals in cluster_identity_map.items() for v in vals}
     )
     l_adata.obs["category"] = np.array(inverted[l_adata.obs["leiden_clusters"]])
     sam = SAM(counts=l_adata)
